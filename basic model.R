@@ -53,6 +53,7 @@ tourney_seeds <- read.csv(paste(data_folder,"tourney_seeds.csv",sep=""))
 tourney_slots <- read.csv(paste(data_folder,"tourney_slots.csv",sep=""))
 solution <- read.csv(paste(data_folder,"solution.csv",sep=""))
 oranks_orig <- read.csv(paste(data_folder,"ordinal_ranks_core_33.csv",sep=""))
+oranks_orig_noncore <- read.csv(paste(data_folder,"ordinal_ranks_non_core.csv",sep=""))
 oranks_s <- read.csv(paste(data_folder,"ordinal_ranks_season_S_thru_17-MAR.csv",sep=""))
 
 
@@ -67,7 +68,8 @@ sample_submission$id.1 <- as.numeric(substr(sample_submission$id, 3, 5))
 sample_submission$id.2 <- as.numeric(substr(sample_submission$id, 7, 9))
 sample_submission$season <- factor(substr(sample_submission$id, 1, 1), levels=levels(seasons$season))
 
-oranks <- rbind(oranks_orig, oranks_s)
+oranks <- rbind(oranks_orig, oranks_orig_noncore)
+oranks <- rbind(oranks, oranks_s)
 oranks$season <- factor(oranks$season, levels=levels(seasons$season))
 
 
@@ -99,6 +101,15 @@ season_summary$winpct <- season_summary$wgames / (season_summary$wgames + season
 season_summary$margin_avg <- season_summary$wmargin_avg*season_summary$wgames / (season_summary$wmargin_avg*season_summary$wgames + season_summary$lmargin_avg*season_summary$lgames)
 season_summary <- merge(season_summary, tourney_seeds, by.x=c("season", "id"), by.y=c("season", "team"), all.x=TRUE)
 
+#add ordinal ranks
+season_summary <- merge(season_summary, oranks[oranks$sys_name == "SAG" & oranks$rating_day_num == 133, c(1,4,5)], by.x=c("season", "id"), by.y=c("season", "team"), all.x=TRUE)
+colnames(season_summary)[length(season_summary)] <- "SAG"
+season_summary <- merge(season_summary, oranks[oranks$sys_name == "POM" & oranks$rating_day_num == 133, c(1,4,5)], by.x=c("season", "id"), by.y=c("season", "team"), all.x=TRUE)
+colnames(season_summary)[length(season_summary)] <- "POM"
+season_summary <- merge(season_summary, oranks[oranks$sys_name == "LMC" & oranks$rating_day_num == 133, c(1,4,5)], by.x=c("season", "id"), by.y=c("season", "team"), all.x=TRUE)
+colnames(season_summary)[length(season_summary)] <- "LMC"
+season_summary <- merge(season_summary, oranks[oranks$sys_name == "MOR" & oranks$rating_day_num == 133, c(1,4,5)], by.x=c("season", "id"), by.y=c("season", "team"), all.x=TRUE)
+colnames(season_summary)[length(season_summary)] <- "MOR"
 
 #build up glicko ratings
 results <- rbind(data.frame(regular_season_results, tourney=FALSE), data.frame(tourney_results, wloc=NA, tourney=TRUE))
@@ -148,6 +159,10 @@ prepareDf <- function(x) {
     
     x$winpred <- 1/(1+10^(-x$glicko.diff/15))
     x$glickopred = 1/(1 + 10^(-g(sqrt(x$glickord.1^2 + x$glickord.2^2))*(x$glicko.diff)/400))
+    x$SAG.diff <- x$SAG.1 - x$SAG.2
+    x$POM.diff <- x$POM.1 - x$POM.2
+    x$LMC.diff <- x$LMC.1 - x$LMC.2
+    x$MOR.diff <- x$MOR.1 - x$MOR.2
     
     return(x)
 }
@@ -166,10 +181,10 @@ t <- prepareDf(t)
 tail(t, 10)
 
 
-#HOLDOUT <- "R"
+#HOLDOUT <- "Q"
 #t <- subset(t, season != HOLDOUT)
 
-m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff,
+m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff + SAG.diff + POM.diff + LMC.diff + MOR.diff,
     data=t,
     n.trees=50000,
     interaction.depth=3,
@@ -190,10 +205,10 @@ rf <- randomForest(won ~ winpred + glickopred + seedn.diff + seedpred + wmargin_
          data=t,
          ntree=10000,
          importance=TRUE,
-         nodesize=7
+         nodesize=10
         )
 
-lm <- glm(won ~ winpred + glickopred + seedn.diff +  glicko.diff + wmargin_avg.diff + margin_avg.diff +  winpct.diff,
+lm <- glm(won ~ winpred + glickopred + seedn.diff +  glicko.diff + wmargin_avg.diff + margin_avg.diff +  winpct.diff + SAG.diff + POM.diff + LMC.diff + MOR.diff,
                    data=t, family="binomial")
 summary(lm)
 
