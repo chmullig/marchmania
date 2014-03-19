@@ -10,7 +10,7 @@ require(PlayerRatings)
 # define our loss function. epsilon chosen to match public numbers from kaggle forums
 llf <- function(submission, solution) {
     epsilon <- .000000000000001
-    yhat <- min(max(submission, epsilon), 1-epsilon)
+    yhat <- pmin(pmax(submission, rep(epsilon)), 1-rep(epsilon))
     logloss <- -mean(solution*log(yhat)
                      + (1-solution)*log(1 - yhat))
     return(logloss)
@@ -79,9 +79,9 @@ sample_submission_old$pred <- 0
 tourney_seeds$seedn <- as.numeric(substr(tourney_seeds$seed,2,3))
 
 
-#resuts should be 17.3241 for all 0s, and  ~.73 for random ~N(.5, .04) trimmed
+#resuts should be 17.3241 for all 0s, and  ~.69 for random ~N(.5, .04) trimmed
 llf(sample_submission_old$pred[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
-llf(rtnorm(length(solution$Usage != "Ignored"), mean=.5, sd=.04, lower=0, upper=1), solution$pred[solution$Usage != "Ignored"])
+llf(rtnorm(sum(solution$Usage != "Ignored"), mean=.5, sd=.04, lower=0, upper=1), solution$pred[solution$Usage != "Ignored"])
 
 
 
@@ -104,8 +104,8 @@ season_summary <- merge(season_summary, tourney_seeds, by.x=c("season", "id"), b
 results <- rbind(data.frame(regular_season_results, tourney=FALSE), data.frame(tourney_results, wloc=NA, tourney=TRUE))
 results$period <- as.numeric(results$season)*100 + results$daynum/10
 results$wloc <- recode(results$wloc, "c('H') = 2; c('A') = -2; else = 0")
-#glickodata <- data.frame(results[,c(10, 3, 5)], winner = log(results$wscore-results$lscore+1)/4.55)
-glickodata <- data.frame(results[,c(10, 3, 5)], winner = 1)
+glickodata <- data.frame(results[,c(10, 3, 5)], winner = log(results$wscore-results$lscore+1)/4.55)
+#glickodata <- data.frame(results[,c(10, 3, 5)], winner = 1)
 
 
 
@@ -143,10 +143,10 @@ prepareDf <- function(x) {
     x$wmargin_avg.diff <- x$wmargin_avg.1 - x$wmargin_avg.2
     x$winpct.diff <- x$winpct.1 - x$winpct.2
     x$seedn.diff <- x$seedn.2 - x$seedn.1
-    x$seedpred <- .5 + .003*(x$seedn.2 - x$seedn.1)
+    x$seedpred <- .5 + .03*(x$seedn.2 - x$seedn.1)
+    x$seed1v16 <- (x$seedn.2 - x$seedn.1 >= 15) + 0 - (x$seedn.2 - x$seedn.1 <= -15)
     
     x$winpred <- 1/(1+10^(-x$glicko.diff/15))
- 
     x$glickopred = 1/(1 + 10^(-g(sqrt(x$glickord.1^2 + x$glickord.2^2))*(x$glicko.diff)/400))
     
     return(x)
@@ -160,37 +160,39 @@ names(t1) <- c("season", "daynum", "id.1", "score.1", "id.2", "score.2", "won")
 t2 <- data.frame(tourney_results[as.numeric(tourney_results$wteam) >= as.numeric(tourney_results$lteam),c(1,2, 5,6,3,4)], won=0)
 names(t2) <- c("season", "daynum", "id.1", "score.1", "id.2", "score.2", "won")
 
-
 t <- rbind(t1, t2)
 t$id <- paste(t$season, t$id.1, t$id.2, sep="_")
-
-tail(t1)
-tail(t2)
-tail(t)
-
 t <- prepareDf(t)
-tail(t[,c(1:8,18,20,30)], 70)
-tail(t, 25)
+tail(t, 10)
 
 
-m <- gbm(won ~ winpred + glickopred + seedn.1 + seedn.2 + seedn.diff + seedpred + glicko.1 + glicko.2 + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.1 + winpct.2 + winpct.diff,
+HOLDOUT <- "R"
+t <- subset(t, season != HOLDOUT)
+
+m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff,
     data=t,
-    n.trees=10000,
-    interaction.depth=4,
+    n.trees=50000,
+    interaction.depth=3,
     n.cores=4,
-    n.minobsinnode = 3,
+    n.minobsinnode = 1,
+    shrinkage=.0001,
     distribution="bernoulli")
 
-best.iter <- gbm.perf(m)
 summary(m, n.trees=best.iter)
+best.iter <- gbm.perf(m)
+    pred.gbm <- predict(m, p, n.trees=best.iter, type="response")
+    llf(pred.gbm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+    llf(predict(m, pr, n.trees=best.iter, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
 
-rf <- randomForest(won ~ winpred + glickopred + seedn.1 + seedn.2 + seedn.diff + seedpred + glicko.1 + glicko.2 + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.1 + winpct.2 + winpct.diff,
+
+rf <- randomForest(won ~ winpred + glickopred + seedn.diff + seedpred + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff,
          data=t,
-         ntree=15000,
-         importance=TRUE
+         ntree=10000,
+         importance=TRUE,
+         nodesize=7
         )
 
-lm <- glm(won ~ winpred + glickopred + seedn.diff + glicko.diff + wmargin_avg.diff + margin_avg.diff +  winpct.diff,
+lm <- glm(won ~ winpred + glickopred + seedn.diff + seed1v16 + glicko.diff + wmargin_avg.diff + margin_avg.diff +  winpct.diff,
                    data=t, family="binomial")
 summary(lm)
 
@@ -204,23 +206,36 @@ p <- sample_submission_old
 p <- prepareDf(p)
 p <- p[with(p, order(id)),]
 
+pr <- subset(p, season == HOLDOUT)
+solutionr <- subset(solution, season == HOLDOUT)
+
 pred.gbm <- predict(m, p, n.trees=best.iter, type="response")
 llf(pred.gbm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+llf(predict(m, pr, n.trees=best.iter, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
+
 
 pred.rf <- predict(rf, p) 
 llf(pred.rf[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+llf(predict(rf, pr)[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
 
 pred.lm <- predict(lm, p, type="response")
 llf(pred.lm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+llf(predict(lm, pr, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
 
-pred.seed <- .5 + .003*(p$seedn.diff)
+
+
+pred.seed <- .5 + .03*(p$seedn.diff)
 llf(pred.seed[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+llf((.5 + .03*(pr$seedn.diff))[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
+
+
 llf(p$glickopred[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+llf(pr$glickopred[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
 
 
 ##bracket season R with gbm
 sample_submission_old$pred <- pred.gbm
-write.csv( sample_submission_old[sample_submission_old$season == "R",1:2], "submission_R.csv", row.names=FALSE)
+write.csv(sample_submission_old[sample_submission_old$season ==HOLDOUT,1:2], "submission_R.csv", row.names=FALSE)
 
 ##actually predict the season S with gbm
 curr <- sample_submission
