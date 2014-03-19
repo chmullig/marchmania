@@ -1,0 +1,34 @@
+This is my submission to the
+[kaggle march mania competition](http://www.kaggle.com/c/march-machine-learning-mania).
+It was made with the encouragement of the [Columbia Data Science Society](http://idse.columbia.edu/cdss). 
+
+The final model I ended up using was gbm. It aggregates a bunch of information,
+much of which ended up being pretty irrelevant. In particular I create some
+aggregate statistics about each team over the regular season, like win percent,
+and margins for winning/losing (surprisingly winning margin is super predcitive).
+
+I use the PlayerRatings library to calculate a glicko rating for each team, and
+then calculate a prediction from that (along with raw difference in rating). 
+
+I merge in some tournament information, including seed number (obviously very
+predictive). Finally I added some of the ranking systems that Nate Silver
+[http://fivethirtyeight.com/features/nate-silvers-ncaa-basketball-predictions/](identifies)
+as important, Pomeroy, Moore, and LRMC. I couldn't get easy access to Sagarin's
+predictor ratings, so I used Sagarin's regular ratings.
+
+The gbm's relative influence information is:
+
+                  var   rel.inf
+           seedn.diff 45.272478
+           glickopred 14.791104
+          winpct.diff  6.241056
+     wmargin_avg.diff  5.389482
+          glicko.diff  5.316646
+             POM.diff  4.761056
+             SAG.diff  4.173324
+        wmargin_avg.1  4.018286
+             MOR.diff  3.604845
+             LMC.diff  2.514890
+      margin_avg.diff  2.133449
+        wmargin_avg.2  1.783383
+             seedpred  0.000000
