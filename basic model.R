@@ -179,7 +179,7 @@ t <- rbind(t1, t2)
 t$id <- paste(t$season, t$id.1, t$id.2, sep="_")
 t <- prepareDf(t)
 tail(t, 10)
-
+asdfasdf
 
 #HOLDOUT <- "Q"
 #t <- subset(t, season != HOLDOUT)
