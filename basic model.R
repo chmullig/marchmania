@@ -181,7 +181,7 @@ t <- prepareDf(t)
 tail(t, 10)
 
 
-#HOLDOUT <- "Q"
+HOLDOUT <- "Q"
 #t <- subset(t, season != HOLDOUT)
 
 m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff + SAG.diff + POM.diff + LMC.diff + MOR.diff,
@@ -196,9 +196,18 @@ m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 
 summary(m, n.trees=best.iter)
 best.iter <- gbm.perf(m)
 
-    pred.gbm <- predict(m, p, n.trees=best.iter, type="response")
-    llf(pred.gbm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
-    llf(predict(m, pr, n.trees=best.iter, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
+
+m_noseed <- gbm(won ~ glickopred + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff + SAG.diff + POM.diff + LMC.diff + MOR.diff,
+         data=t,
+         n.trees=50000,
+         interaction.depth=3,
+         n.cores=4,
+         n.minobsinnode = 1,
+         shrinkage=.0001,
+         distribution="bernoulli")
+
+summary(m_noseed, n.trees=best.iter)
+best.iter.noseed <- gbm.perf(m_noseed)
 
 
 rf <- randomForest(won ~ winpred + glickopred + seedn.diff + seedpred + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff,
@@ -228,6 +237,10 @@ solutionr <- subset(solution, season == HOLDOUT)
 pred.gbm <- predict(m, p, n.trees=best.iter, type="response")
 llf(pred.gbm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
 llf(predict(m, pr, n.trees=best.iter, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
+
+pred.gbm <- predict(m_noseed, p, n.trees=best.iter, type="response")
+llf(pred.gbm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
+llf(predict(m_noseed, pr, n.trees=best.iter, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
 
 
 pred.rf <- predict(rf, p) 
@@ -260,6 +273,9 @@ curr <- curr[with(curr, order(id)),]
 
 sample_submission$pred <- predict(m, curr, n.trees=best.iter, type="response")
 write.csv( sample_submission[,1:2], "submission_gbm.csv", row.names=FALSE)
+
+sample_submission$pred <- predict(m_noseed, curr, n.trees=best.iter, type="response")
+write.csv( sample_submission[,1:2], "submission_gbm_noseed.csv", row.names=FALSE)
 
 
 sample_submission$pred <- predict(lm, curr, type="response")

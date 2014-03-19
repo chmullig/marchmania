@@ -1,9 +1,15 @@
 rm(list=ls())
-submission<-read.csv("submission_gbm.csv")
+
+args <- commandArgs(trailingOnly = TRUE)
+fn <- args[1]
+tgtseason <- args[2]
+output <- paste(substr(fn, 1, nchar(fn)-3), "pdf", sep="")
+
+
+submission<-read.csv(fn)
 teams<-read.csv("data/teams.csv")
 seeds<-read.csv("data/tourney_seeds.csv")
-pdf("bracket.pdf",width=11,height=8.5)
-tgtseason<-"S"
+pdf(output,width=11,height=8.5)
 
 seeds$region<-substr(seeds$seed,1,1)
 seeds$seed<-as.numeric(substr(seeds$seed,2,3))
