@@ -12,7 +12,7 @@ then calculate a prediction from that (along with raw difference in rating).
 
 I merge in some tournament information, including seed number (obviously very
 predictive). Finally I added some of the ranking systems that Nate Silver
-[http://fivethirtyeight.com/features/nate-silvers-ncaa-basketball-predictions/](identifies)
+[identifies](http://fivethirtyeight.com/features/nate-silvers-ncaa-basketball-predictions/)
 as important, Pomeroy, Moore, and LRMC. I couldn't get easy access to Sagarin's
 predictor ratings, so I used Sagarin's regular ratings.
 
