@@ -244,5 +244,9 @@ curr <- prepareDf(curr)
 curr <- curr[with(curr, order(id)),]
 
 sample_submission$pred <- predict(m, curr, n.trees=best.iter, type="response")
+write.csv( sample_submission[,1:2], "submission_gbm.csv", row.names=FALSE)
 
-write.csv( sample_submission[,1:2], "submission.csv", row.names=FALSE)
+
+sample_submission$pred <- predict(lm, curr, type="response")
+sample_submission$pred[is.na(sample_submission$pred)] <- .5
+write.csv( sample_submission[,1:2], "submission_lm.csv", row.names=FALSE)
