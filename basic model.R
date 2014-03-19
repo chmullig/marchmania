@@ -166,8 +166,8 @@ t <- prepareDf(t)
 tail(t, 10)
 
 
-HOLDOUT <- "R"
-t <- subset(t, season != HOLDOUT)
+#HOLDOUT <- "R"
+#t <- subset(t, season != HOLDOUT)
 
 m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 + wmargin_avg.2 + wmargin_avg.diff + margin_avg.diff + winpct.diff,
     data=t,
@@ -180,6 +180,7 @@ m <- gbm(won ~ glickopred + seedn.diff + seedpred + glicko.diff + wmargin_avg.1 
 
 summary(m, n.trees=best.iter)
 best.iter <- gbm.perf(m)
+
     pred.gbm <- predict(m, p, n.trees=best.iter, type="response")
     llf(pred.gbm[solution$Usage != "Ignored"], solution$pred[solution$Usage != "Ignored"])
     llf(predict(m, pr, n.trees=best.iter, type="response")[solutionr$Usage != "Ignored"], solutionr$pred[solutionr$Usage != "Ignored"])
@@ -192,7 +193,7 @@ rf <- randomForest(won ~ winpred + glickopred + seedn.diff + seedpred + wmargin_
          nodesize=7
         )
 
-lm <- glm(won ~ winpred + glickopred + seedn.diff + seed1v16 + glicko.diff + wmargin_avg.diff + margin_avg.diff +  winpct.diff,
+lm <- glm(won ~ winpred + glickopred + seedn.diff +  glicko.diff + wmargin_avg.diff + margin_avg.diff +  winpct.diff,
                    data=t, family="binomial")
 summary(lm)
 
