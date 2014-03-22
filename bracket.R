@@ -3,12 +3,18 @@ rm(list=ls())
 args <- commandArgs(trailingOnly = TRUE)
 fn <- args[1]
 tgtseason <- args[2]
-output <- paste(substr(fn, 1, nchar(fn)-3), "pdf", sep="")
+if (length(args) == 3) {    
+    solution <- read.csv(args[3])
+} else {
+    solution <- NA
+}
 
+output <- paste(substr(fn, 1, nchar(fn)-3), "pdf", sep="")
 
 submission<-read.csv(fn)
 teams<-read.csv("data/teams.csv")
 seeds<-read.csv("data/tourney_seeds.csv")
+
 pdf(output,width=11,height=8.5)
 
 seeds$region<-substr(seeds$seed,1,1)
@@ -25,6 +31,11 @@ submission<-merge(submission,seeds)
 names(teams)<-c("team2", "name2")
 submission<-merge(submission,teams)
 submission<-subset(submission, season==tgtseason)
+
+
+#if a solution exists, update the probabilities so you predicted 1 for the winner, -1 for the loser
+submission <- merge(submission, solution[solution$Usage != "Ignored",1:2], all.x=TRUE, by="id")
+submission$pred1[!is.na(submission$pred)] <- submission$pred[!is.na(submission$pred)]
 submission<-submission[,c(3,1,8,11,6,9,7,10,5)]
 
 ##############################################################
@@ -32,6 +43,7 @@ submission<-submission[,c(3,1,8,11,6,9,7,10,5)]
 ##############################################################
 
 #submission$pred1<-round(sample(seq(0,1,.0001),nrow(submission)),4)
+
 submission$pred2<-round((1-submission$pred1),4)
 
 subw<-subset(submission, region1=="W" & region2=="W")
