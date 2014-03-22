@@ -3,7 +3,11 @@ rm(list=ls())
 args <- commandArgs(trailingOnly = TRUE)
 fn <- args[1]         #eg submission.csv
 tgtseason <- args[2]  #eg S
-solfn <- args[3]      #eg solution.csv
+if (length(args) == 3) {
+    solfn <- args[3]       #eg solution.csv
+} else {
+    solfn <- NA
+}
 
 output <- paste(substr(fn, 1, nchar(fn)-3), "pdf", sep="")
 
@@ -30,7 +34,7 @@ submission<-subset(submission, season==tgtseason)
 
 
 #if a solution exists, update the probabilities so you predicted 1 for the winner, -1 for the loser
-if (length(args) == 3) {    
+if (!is.na(solfn)) {    
     solution <- read.csv(solfn)
     submission <- merge(submission, solution[solution$Usage != "Ignored",1:2], all.x=TRUE, by="id")
     submission$pred1[!is.na(submission$pred)] <- submission$pred[!is.na(submission$pred)]
