@@ -48,7 +48,10 @@ submission<-submission[,c(3,1,8,11,6,9,7,10,5)]
 
 #submission$pred1<-round(sample(seq(0,1,.0001),nrow(submission)),4)
 
-submission$pred2<-round((1-submission$pred1),4)
+submission$pred1<-round(submission$pred1,2)
+submission$pred2<-1-submission$pred1
+
+
 
 subw<-subset(submission, region1=="W" & region2=="W")
 
